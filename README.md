@@ -1,36 +1,76 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Speedster — Internet Speed Test
+
+Modern, privacy-friendly internet speed test built with:
+- Next.js App Router
+- Tailwind CSS v4
+- shadcn/ui-inspired components
+- Supabase (auth + DB)
+- Framer Motion, Recharts, Sonner
+
+## Features
+
+- Landing page with animated gradient blobs and Start button
+- Live speed test simulation: ping, jitter, packet loss, download, upload
+- Real-time gauges and progress visualization
+- Auto-select nearest server based on your geolocation (via IP)
+- IP, ISP, server location map, route latency
+- Dark mode (system default) with toggle
+- Share via link, X (Twitter), or export image snapshot
+- Save to Supabase when signed in; local history otherwise
+- Results page, profile analytics, admin placeholder
+- Public JSON API endpoints for integration
 
 ## Getting Started
 
-First, run the development server:
+1) Install deps
+- npm install
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+2) Add environment variables
+Create `.env.local`:
+```
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3) Run
+- npm run dev
+- open http://localhost:3000
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Database
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Create a table speed_results in Supabase:
 
-## Learn More
+```
+create table if not exists public.speed_results (
+  id text primary key,
+  user_id uuid references auth.users(id) on delete set null,
+  ip text,
+  isp text,
+  server_id text,
+  server_city text,
+  server_country text,
+  ping int,
+  jitter float,
+  loss float,
+  download int,
+  upload int,
+  route_latency int,
+  stability_score int,
+  created_at timestamptz default now()
+);
+```
 
-To learn more about Next.js, take a look at the following resources:
+Optionally a public view:
+```
+create or replace view public.speed_results_public as
+  select id, ip, isp, server_id, server_city, server_country,
+         ping, jitter, loss, download, upload, route_latency, stability_score, created_at
+  from public.speed_results;
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Notes
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Speed test uses simulated metrics for now. Swap /api/test to real worker later.
+- The share image snapshot uses html-to-image client-side.
+- For Google OAuth, enable in Supabase and set Redirect URL to:
+  - http://localhost:3000/auth/callback
